@@ -6,8 +6,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 #[allow(non_snake_case)]
 #[derive(Debug)]
-struct ElfHeader
-{
+struct ElfHeader {
     e_ident: [u8; 16],
     e_type: u16,
     e_machine: u16,
@@ -24,62 +23,69 @@ struct ElfHeader
     e_shstrndx: u16
 }
 
-#[allow(non_snake_case)]
-impl ElfHeader
-{
-    fn parse_file_header(buf: &[u8]) -> std::io::Result<ElfHeader>
-    {
+impl ElfHeader {
+    fn parse_elf_header(buf: &[u8]) -> std::io::Result<Self> {
         let mut cur = Cursor::new(buf);
         let mut e_ident = [0_u8; 16];
-        for cc in &mut e_ident
-        {
+        for cc in &mut e_ident {
             *cc = cur.read_u8()?;
         }
 
-        let e_type = cur.read_u16::<LittleEndian>()?;
-        let e_machine = cur.read_u16::<LittleEndian>()?;
-        let e_version = cur.read_u32::<LittleEndian>()?;
-        let e_entry = cur.read_u64::<LittleEndian>()?;
-        let e_phoff = cur.read_u64::<LittleEndian>()?;
-        let e_shoff = cur.read_u64::<LittleEndian>()?;
-        let e_flags = cur.read_u32::<LittleEndian>()?;
-        let e_ehsize = cur.read_u16::<LittleEndian>()?;
-        let e_phentsize = cur.read_u16::<LittleEndian>()?;
-        let e_phnum = cur.read_u16::<LittleEndian>()?;
-        let e_shentsize = cur.read_u16::<LittleEndian>()?;
-        let e_shnum = cur.read_u16::<LittleEndian>()?;
-        let e_shstrndx = cur.read_u16::<LittleEndian>()?;
+        Ok(ElfHeader {
+            e_ident: e_ident,
+            e_type: cur.read_u16::<LittleEndian>()?,
+            e_machine: cur.read_u16::<LittleEndian>()?,
+            e_version:cur.read_u32::<LittleEndian>()?,
+            e_entry: cur.read_u64::<LittleEndian>()?,
+            e_phoff: cur.read_u64::<LittleEndian>()?,
+            e_shoff: cur.read_u64::<LittleEndian>()?,
+            e_flags: cur.read_u32::<LittleEndian>()?,
+            e_ehsize: cur.read_u16::<LittleEndian>()?,
+            e_phentsize: cur.read_u16::<LittleEndian>()?,
+            e_phnum: cur.read_u16::<LittleEndian>()?,
+            e_shentsize: cur.read_u16::<LittleEndian>()?,
+            e_shnum: cur.read_u16::<LittleEndian>()?,
+            e_shstrndx: cur.read_u16::<LittleEndian>()?
+        })
+    }
 
-        Ok(ElfHeader 
-           {
-               e_ident,
-               e_type,
-               e_machine,
-               e_version,
-               e_entry,
-               e_phoff,
-               e_shoff,
-               e_flags,
-               e_ehsize,
-               e_phentsize,
-               e_phnum, 
-               e_shentsize,
-               e_shnum,
-               e_shstrndx
-           })
+    fn print_elf_header(header: &Self) {
+        let mut print_buf = String::new();
+
+        let mut magic = String::new();
+        for byte in header.e_ident {
+            magic.push_str(&format!("{:02x} ", byte));
+        }
+
+        print_buf.push_str(&format!("Magic: {}\n\
+                                    Type: {}\n\
+                                    Machine: {}\n\
+                                    Version: {}\n\
+                                    Entry point address: 0x{:x}\n\
+                                    Start of program headers: {} (bytes into file)\n\
+                                    Start of section headers: {} (bytes into file)\n\
+                                    Flags: {} (hogehoge)\n\
+                                    Size of this header: {} (bytes)\n\
+                                    Size of program headers: {} (bytes)\n\
+                                    Number of program headers: {}\n\
+                                    Size of section headers: {} (bytes)\n\
+                                    Number of section headers: {}\n\
+                                    Section header string table index: {}\n",
+                                    magic, header.e_type, header.e_machine, header.e_version, header.e_entry, header.e_phoff, header.e_shoff, header.e_flags, header.e_ehsize, header.e_phentsize, header.e_phnum, header.e_shentsize, header.e_shnum, header.e_shstrndx));
+
+        println!("{}", print_buf);
     }
 }
 
-fn main() -> std::io::Result<()>
-{
+fn main() -> std::io::Result<()> {
     let mut f = File::open("chall")?;
-    let mut buf_file_header = [0_u8; 64];
+    let mut buf_elf_header = [0_u8; 64];
 
-    let _ = f.read(&mut buf_file_header)?;
+    let _ = f.read(&mut buf_elf_header)?;
 
-    let file_header = ElfHeader::parse_file_header(&buf_file_header)?;
+    let elf_header = ElfHeader::parse_elf_header(&buf_elf_header)?;
 
-    println!("{:?}", file_header);
-    
+    ElfHeader::print_elf_header(&elf_header);
+
     Ok(())
 }
